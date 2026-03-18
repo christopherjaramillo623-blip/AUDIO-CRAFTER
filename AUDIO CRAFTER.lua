@@ -1,85 +1,23 @@
 -- ╔══════════════════════════════════════════════════════╗
--- ║  AC AudioCrafter V3.1  — Self-Install & Auto-Rejoin ║
+-- ║  AC AudioCrafter V3.1  — Execute this file ONCE     ║
+-- ║  It auto-installs to autoexec and self-updates       ║
 -- ╚══════════════════════════════════════════════════════╝
--- HOW IT WORKS:
---  1. On first execution, saves itself to your executor's autoexec
---     folder as "AC_AudioCrafter.lua" so it auto-runs every game join.
---  2. Uses queue_on_teleport to re-run itself when you rejoin/teleport.
---  3. Both features work automatically — just execute once, done forever.
+--
+-- WHAT HAPPENS WHEN YOU EXECUTE THIS:
+--   1. Writes the full script to your executor root folder
+--      as "AC_AudioCrafter.lua" (always keeps it up to date)
+--   2. Writes a loader to autoexec/AC_AudioCrafter.lua
+--      so it auto-runs every single time you join ANY game
+--   3. Sets up queue_on_teleport for Roblox teleports too
+--   4. Runs the actual AC script immediately right now
+--
+-- AFTER FIRST EXECUTION:
+--   You never need to manually execute again.
+--   Every game join = AC loads automatically.
 
-do
-    local SELF_FILE = "AC_AudioCrafter.lua"
-
-    -- Try to read this script's own source from executor root
-    local selfSource = nil
-    pcall(function()
-        if isfile and isfile(SELF_FILE) then
-            selfSource = readfile(SELF_FILE)
-        end
-    end)
-
-    local function doInstall(source)
-        -- Write to autoexec folder (works on Synapse, Fluxus, Velocity, KRNL, Xeno, Wave)
-        pcall(function()
-            if writefile then
-                if isfolder and not isfolder("autoexec") then
-                    if makefolder then makefolder("autoexec") end
-                end
-                writefile("autoexec/" .. SELF_FILE, source)
-                print("[AC] ✓ Auto-execute installed — will run every game join automatically")
-            end
-        end)
-
-        -- queue_on_teleport: re-runs this script when you rejoin or teleport
-        -- Supported by: Synapse X, Fluxus, Velocity, KRNL, Xeno, Wave, Electron
-        if queue_on_teleport then
-            local LP_QOT = game:GetService("Players").LocalPlayer
-            if LP_QOT then
-                LP_QOT.OnTeleport:Connect(function(state)
-                    if state == Enum.TeleportState.Started then
-                        pcall(function()
-                            queue_on_teleport(source)
-                            print("[AC] ✓ Queued re-execute for next session")
-                        end)
-                    end
-                end)
-            end
-        end
-    end
-
-    if selfSource then
-        -- Full source available — install fully
-        doInstall(selfSource)
-    else
-        -- Source not found as a file yet.
-        -- Write a bootstrap loader to autoexec that loads from root folder.
-        -- User needs to save this script as AC_AudioCrafter.lua in executor root.
-        local bootstrap = 'if isfile and isfile("AC_AudioCrafter.lua") then loadstring(readfile("AC_AudioCrafter.lua"))() else print("[AC] Missing AC_AudioCrafter.lua in executor root folder") end'
-        pcall(function()
-            if writefile then
-                if isfolder and not isfolder("autoexec") then
-                    if makefolder then makefolder("autoexec") end
-                end
-                writefile("autoexec/" .. SELF_FILE, bootstrap)
-                print("[AC] ✓ Bootstrap loader written to autoexec/AC_AudioCrafter.lua")
-                print("[AC] → Save this script as AC_AudioCrafter.lua in your executor root folder")
-                print("[AC] → From then on it will fully self-install and auto-rejoin")
-            end
-        end)
-        -- Also set up queue_on_teleport with bootstrap
-        if queue_on_teleport then
-            local LP_QOT2 = game:GetService("Players").LocalPlayer
-            if LP_QOT2 then
-                LP_QOT2.OnTeleport:Connect(function(state)
-                    if state == Enum.TeleportState.Started then
-                        pcall(function() queue_on_teleport(bootstrap) end)
-                    end
-                end)
-            end
-        end
-    end
-end
-
+-- The full AC script source embedded safely as a Lua long string.
+-- No manual file saving required from the user.
+local _AC_SRC = [[
 -- AC AudioCrafter V3.1 — Part 1 of 2
 -- See part 2 for qBar, open animation, and command handler completion
 -- Paste BOTH parts together in order
@@ -1612,4 +1550,71 @@ do
     print("AC AudioCrafter V3.1 — by MelodyCrafter")
     print("  G = toggle UI | Emotes tab: Reanimation + Open Emote Menu")
     print("  All KeyCode errors fixed | Double tag fixed | Ragdoll fix")
+end
+]]
+
+-- ── Step 1: Write full script to executor root ─────────────────────────────
+local _writeOk = false
+pcall(function()
+    if writefile then
+        writefile("AC_AudioCrafter.lua", _AC_SRC)
+        _writeOk = true
+        print("[AC] Saved AC_AudioCrafter.lua to executor root (always up to date)")
+    end
+end)
+
+-- ── Step 2: Write autoexec loader ──────────────────────────────────────────
+-- This runs every game join. It reads the full script from root and executes it.
+-- task.wait(2) gives the game time to fully load before the UI builds.
+pcall(function()
+    if writefile then
+        -- Create autoexec folder if needed
+        pcall(function()
+            if isfolder then
+                if not isfolder("autoexec") then
+                    if makefolder then makefolder("autoexec") end
+                end
+            end
+        end)
+        local loader = 'task.wait(2)
+if isfile and isfile("AC_AudioCrafter.lua") then
+    local ok,err = pcall(function() loadstring(readfile("AC_AudioCrafter.lua"))() end)
+    if not ok then print("[AC AutoExec Error] " .. tostring(err)) end
+else
+    print("[AC AutoExec] AC_AudioCrafter.lua not found in executor root")
+end'
+        writefile("autoexec/AC_AudioCrafter.lua", loader)
+        print("[AC] autoexec/AC_AudioCrafter.lua installed — auto-runs every game join!")
+        print("[AC] ✓ You never need to manually execute AC again.")
+    else
+        print("[AC] writefile not available — autoexec install skipped")
+        print("[AC]   Place this script in your executor autoexec folder manually")
+    end
+end)
+
+-- ── Step 3: queue_on_teleport for Roblox teleports ─────────────────────────
+-- This handles cases where Roblox teleports you to another place mid-session.
+-- Works in: Synapse X, Fluxus, Velocity, KRNL, Xeno, Wave, Electron
+if queue_on_teleport then
+    pcall(function()
+        local lp = game:GetService("Players").LocalPlayer
+        if lp then
+            lp.OnTeleport:Connect(function(state)
+                if state == Enum.TeleportState.Started then
+                    pcall(function()
+                        queue_on_teleport(_AC_SRC)
+                        print("[AC] Queued re-execute for Roblox teleport")
+                    end)
+                end
+            end)
+        end
+    end)
+end
+
+-- ── Step 4: Run the actual AC script right now ─────────────────────────────
+local _runOk, _runErr = pcall(function()
+    loadstring(_AC_SRC)()
+end)
+if not _runOk then
+    print("[AC Startup Error] " .. tostring(_runErr))
 end

@@ -683,23 +683,20 @@ do
     local _uid = tostring(AC.player.UserId)
     local _saveDir = "BLEED/" .. _uid
     local function readData(key, fallback)
-        local fullPath = _saveDir .. "/" .. key
         local ok, r = pcall(function()
-            if isfile and isfile(fullPath) then
-                return AC.Http:JSONDecode(readfile(fullPath))
-            end
+            if not isfile then return nil end
+            local fullPath = _saveDir .. "/" .. key
+            if isfile(fullPath) then return AC.Http:JSONDecode(readfile(fullPath)) end
+            return nil
         end)
         return (ok and r) or fallback
     end
     local function writeData(key, data)
         pcall(function()
-            if writefile then
-                if isfolder then
-                    if not isfolder("BLEED") then if makefolder then makefolder("BLEED") end end
-                    if not isfolder(_saveDir) then if makefolder then makefolder(_saveDir) end end
-                end
-                writefile(_saveDir .. "/" .. key, AC.Http:JSONEncode(data))
-            end
+            if not writefile then return end
+            pcall(function() if not isfolder("BLEED") then makefolder("BLEED") end end)
+            pcall(function() if not isfolder(_saveDir) then makefolder(_saveDir) end end)
+            writefile(_saveDir .. "/" .. key, AC.Http:JSONEncode(data))
         end)
     end
 
@@ -1049,7 +1046,8 @@ do
         fetchRnAnimList(function(list)
             for i,a in ipairs(list) do
                 if a and a[1] and a[2] then
-                    rnAllRows[i]=buildRnRow(a[1],a[2],i)
+                    local rnBuilt=buildRnRow(a[1],a[2],i)
+                    if rnBuilt then rnAllRows[i]=rnBuilt end
                 end
                 if i%20==0 then
                     rnScroll.CanvasSize=UDim2.new(0,0,0,i*36+8)
@@ -1067,13 +1065,13 @@ do
         if favOnly then AC.TS:Create(rnTabFav,TweenInfo.new(0.15),{BackgroundColor3=AC.PUR_DARK,BackgroundTransparency=0}):Play(); rnTabFav.TextColor3=AC.TXT_WHITE; AC.TS:Create(rnTabAll,TweenInfo.new(0.15),{BackgroundTransparency=0.5,BackgroundColor3=Color3.fromRGB(22,22,22)}):Play(); rnTabAll.TextColor3=AC.TXT_DIM
         else AC.TS:Create(rnTabAll,TweenInfo.new(0.15),{BackgroundColor3=AC.PUR_DARK,BackgroundTransparency=0}):Play(); rnTabAll.TextColor3=AC.TXT_WHITE; AC.TS:Create(rnTabFav,TweenInfo.new(0.15),{BackgroundTransparency=0.5,BackgroundColor3=Color3.fromRGB(22,22,22)}):Play(); rnTabFav.TextColor3=AC.TXT_DIM end
         local q=rnSearch.Text:lower()
-        for _,r in ipairs(rnAllRows) do local sf=(not favOnly) or rnFavs[tostring(r.index)]; r.row.Visible=sf and (q=="" or r.nameLower:find(q,1,true)~=nil) end
+        for _,r in ipairs(rnAllRows) do if r then local sf=(not favOnly) or rnFavs[tostring(r.index)]; r.row.Visible=sf and (q=="" or r.nameLower:find(q,1,true)~=nil) end end
     end
     rnTabAll.MouseButton1Click:Connect(function() rnSwitchTab(false) end)
     rnTabFav.MouseButton1Click:Connect(function() rnSwitchTab(true) end)
     rnSearch:GetPropertyChangedSignal("Text"):Connect(function()
         local q=rnSearch.Text:lower()
-        for _,r in ipairs(rnAllRows) do local sf=(not rnFavOnly) or rnFavs[tostring(r.index)]; r.row.Visible=sf and (q=="" or r.nameLower:find(q,1,true)~=nil) end
+        for _,r in ipairs(rnAllRows) do if r then local sf=(not rnFavOnly) or rnFavs[tostring(r.index)]; r.row.Visible=sf and (q=="" or r.nameLower:find(q,1,true)~=nil) end end
     end)
 
     -- Global keybind listener for RN emote binds
@@ -1340,14 +1338,15 @@ end)
         ugcListPage.Visible=(tabName~="States"); ugcStatesPage.Visible=(tabName=="States"); ugcSrch.Visible=(tabName~="States")
         if tabName~="States" then
             ugcFavOnly=(tabName=="Favs"); local q=ugcSrch.Text:lower()
-            for _,r in ipairs(ugcAllRows) do local sf=(not ugcFavOnly) or ugcFavs[tostring(r.id)]; r.row.Visible=sf and (q=="" or r.nameLower:find(q,1,true)~=nil) end
+            for _,r in ipairs(ugcAllRows) do if r then local sf=(not ugcFavOnly) or ugcFavs[tostring(r.id)]; r.row.Visible=sf and (q=="" or r.nameLower:find(q,1,true)~=nil) end end
         end
     end
     for tn,tb in pairs(ugcTabBtns) do local n=tn; tb.MouseButton1Click:Connect(function() ugcSwitchTab(n) end) end
     ugcSrch:GetPropertyChangedSignal("Text"):Connect(function()
         if ugcActiveTab=="States" then return end; ugcFavOnly=(ugcActiveTab=="Favs"); local q=ugcSrch.Text:lower()
-        for _,r in ipairs(ugcAllRows) do local sf=(not ugcFavOnly) or ugcFavs[tostring(r.id)]; r.row.Visible=sf and (q=="" or r.nameLower:find(q,1,true)~=nil) end
+        for _,r in ipairs(ugcAllRows) do if r then local sf=(not ugcFavOnly) or ugcFavs[tostring(r.id)]; r.row.Visible=sf and (q=="" or r.nameLower:find(q,1,true)~=nil) end end
     end)
+
 
     -- Keybind listener for UGC
     AC.UIS.InputBegan:Connect(function(inp,gp)
@@ -1385,9 +1384,10 @@ end)
             -- Build rows in small chunks to prevent frame drops
             local CHUNK=10
             for i=1,#emotes do
-                ugcAllRows[i]=buildUgcRow(emotes[i],i)
+                local built=buildUgcRow(emotes[i],i)
+                ugcAllRows[i]=built
                 -- Apply current tab filter immediately
-                if ugcFavOnly then ugcAllRows[i].row.Visible = ugcFavs[tostring(emotes[i].id)] == true end
+                if built and ugcFavOnly then built.row.Visible = (ugcFavs[tostring(emotes[i].id)]==true) end
                 if i%CHUNK==0 then
                     -- Update canvas size after each chunk
                     ugcScroll.CanvasSize=UDim2.new(0,0,0,i*36+8)

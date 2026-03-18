@@ -370,13 +370,13 @@ do
     local div2=Instance.new("Frame",pill); div2.Size=UDim2.new(0,1,0.6,0); div2.Position=UDim2.new(0,128,0.2,0); div2.BackgroundColor3=AC.TXT_DIM; div2.BackgroundTransparency=0.5
     local pingLbl=Instance.new("TextLabel",pill); pingLbl.Size=UDim2.new(0,68,1,0); pingLbl.Position=UDim2.new(0,132,0,0); pingLbl.BackgroundTransparency=1; pingLbl.Text="PING  5ms"; pingLbl.TextColor3=AC.PUR_GLOW; pingLbl.TextSize=11; pingLbl.Font=Enum.Font.GothamBold; pingLbl.ZIndex=301
     local fpsF,fpsT={},0
-    local _fpsRunSum=0  -- running sum to avoid ipairs each update
     AC.RS.RenderStepped:Connect(function(dt)
-        fpsF[#fpsF+1]=dt; fpsT=fpsT+dt; _fpsRunSum=_fpsRunSum+dt
+        fpsF[#fpsF+1]=dt; fpsT=fpsT+dt
         if fpsT>=0.5 and #fpsF>0 then
-            local avg=_fpsRunSum/#fpsF; local fps=avg>0 and math.floor(1/avg+0.5) or 0
+            local sum=0; for _,v in ipairs(fpsF) do sum=sum+v end
+            local avg=sum/#fpsF; local fps=avg>0 and math.floor(1/avg+0.5) or 0
             fpsLbl.Text="FPS  "..fps; fpsLbl.TextColor3=fps>=55 and AC.GREEN_OK or fps>=30 and AC.ORANGE_W or AC.RED_ERR
-            fpsF={}; fpsT=0; _fpsRunSum=0
+            fpsF={}; fpsT=0
             local ok,ping=pcall(function() return math.floor(AC.Stats.Network.ServerStatsItem["Data Ping"]:GetValue()) end)
             if ok then pingLbl.Text="PING  "..ping.."ms"; pingLbl.TextColor3=ping<80 and AC.PUR_GLOW or ping<150 and AC.ORANGE_W or AC.RED_ERR end
         end
@@ -656,19 +656,11 @@ do
     onIJ(function(v) if v then AC.ijConn=AC.UIS.JumpRequest:Connect(function() local h=AC.player.Character and AC.player.Character:FindFirstChildOfClass("Humanoid"); if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end end) else if AC.ijConn then AC.ijConn:Disconnect(); AC.ijConn=nil end end end)
     local _,_,onNC=AC.makeToggle(pg,"Noclip",218,false)
     onNC(function(v) if v then
-        local _ncParts={}
-        local function _rebuildNcParts(char)
-            _ncParts={}
+        AC.noclipConn=AC.RS.Stepped:Connect(function()
+            local char=AC.player.Character
             if not char then return end
             for _,p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then _ncParts[#_ncParts+1]=p end
-            end
-        end
-        _rebuildNcParts(AC.player.Character)
-        AC.player.CharacterAdded:Connect(function(c) task.wait(); _rebuildNcParts(c) end)
-        AC.noclipConn=AC.RS.Stepped:Connect(function()
-            for _,p in ipairs(_ncParts) do
-                pcall(function() p.CanCollide=false end)
+                if p:IsA("BasePart") then p.CanCollide=false end
             end
         end)
     else if AC.noclipConn then AC.noclipConn:Disconnect(); AC.noclipConn=nil end; if AC.player.Character then for _,p in ipairs(AC.player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=true end end end end end)
@@ -1646,24 +1638,7 @@ do
         elseif cmd==".bring" then if AC.selectedTarget and AC.selectedTarget.Character then local r=AC.selectedTarget.Character:FindFirstChild("HumanoidRootPart"); local m=AC.player.Character and AC.player.Character:FindFirstChild("HumanoidRootPart"); if r and m then r.CFrame=m.CFrame*CFrame.new(0,0,-3) end end
         elseif cmd==".cleartarget" then AC.stopViewing(); AC.focusActive=false; AC.onHead=false; AC.inBp=false; AC.selectedTarget=nil; if AC.sBox then AC.sBox.Text="" end
         elseif cmd==".fly" then if AC.flyActive then AC.flyActive=false; if AC.flyConn then AC.flyConn:Disconnect(); AC.flyConn=nil end; if AC.flyBV then AC.flyBV:Destroy(); AC.flyBV=nil end; if AC.flyBG then AC.flyBG:Destroy(); AC.flyBG=nil end; if AC._flyAtt then AC._flyAtt:Destroy(); AC._flyAtt=nil end; local h=AC.player.Character and AC.player.Character:FindFirstChildOfClass("Humanoid"); if h then h.PlatformStand=false end else AC.flyActive=true end
-        elseif cmd==".noclip" then if AC.noclipConn then AC.noclipConn:Disconnect(); AC.noclipConn=nil; if AC.player.Character then for _,p in ipairs(AC.player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=true end end end else do
-        -- Cache character parts list so Stepped doesn't call GetDescendants every frame
-        local _ncParts={}
-        local function _rebuildNcParts(char)
-            _ncParts={}
-            if not char then return end
-            for _,p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then _ncParts[#_ncParts+1]=p end
-            end
-        end
-        _rebuildNcParts(AC.player.Character)
-        AC.player.CharacterAdded:Connect(function(c) task.wait() _rebuildNcParts(c) end)
-        AC.noclipConn=AC.RS.Stepped:Connect(function()
-            for _,p in ipairs(_ncParts) do
-                pcall(function() p.CanCollide=false end)
-            end
-        end)
-    end end
+        elseif cmd==".noclip" then if AC.noclipConn then AC.noclipConn:Disconnect(); AC.noclipConn=nil; if AC.player.Character then for _,p in ipairs(AC.player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=true end end end else AC.noclipConn=AC.RS.Stepped:Connect(function() local char=AC.player.Character; if not char then return end; for _,p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=false end end end) end
         elseif cmd==".fullbright" then local v=not(AC.Lighting.Brightness>1); AC.Lighting.Brightness=v and 2 or 1; AC.Lighting.GlobalShadows=not v; AC.Lighting.Ambient=v and Color3.new(1,1,1) or Color3.fromRGB(127,127,127); AC.Lighting.OutdoorAmbient=v and Color3.new(1,1,1) or Color3.fromRGB(127,127,127)
         elseif cmd==".re" then local mr=AC.player.Character and AC.player.Character:FindFirstChild("HumanoidRootPart"); local sv=mr and mr.CFrame; if sv then local conn2; conn2=AC.player.CharacterAdded:Connect(function(nc) conn2:Disconnect(); task.wait(0.5); local mr3=nc:WaitForChild("HumanoidRootPart",5); if mr3 then mr3.CFrame=sv; AC.toast("Respawned!",AC.GREEN_OK) end end); local hh=AC.player.Character:FindFirstChildOfClass("Humanoid"); if hh then hh.Health=0 end end
         elseif cmd==".reset" then local h=AC.player.Character and AC.player.Character:FindFirstChildOfClass("Humanoid"); if h then h.Health=0 end
@@ -1707,23 +1682,14 @@ do
     end)
     makeChip("NC",140,Color3.fromRGB(200,100,10),function(v)
         if v then
-        -- Cache character parts list so Stepped doesn't call GetDescendants every frame
-        local _ncParts={}
-        local function _rebuildNcParts(char)
-            _ncParts={}
-            if not char then return end
-            for _,p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then _ncParts[#_ncParts+1]=p end
-            end
+            AC.noclipConn=AC.RS.Stepped:Connect(function()
+                local char=AC.player.Character; if not char then return end
+                for _,p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=false end end
+            end)
+        else
+            if AC.noclipConn then AC.noclipConn:Disconnect(); AC.noclipConn=nil end
+            if AC.player.Character then for _,p in ipairs(AC.player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=true end end end
         end
-        _rebuildNcParts(AC.player.Character)
-        AC.player.CharacterAdded:Connect(function(c) task.wait(); _rebuildNcParts(c) end)
-        AC.noclipConn=AC.RS.Stepped:Connect(function()
-            for _,p in ipairs(_ncParts) do
-                pcall(function() p.CanCollide=false end)
-            end
-        end)
-        else if AC.noclipConn then AC.noclipConn:Disconnect(); AC.noclipConn=nil end; if AC.player.Character then for _,p in ipairs(AC.player.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=true end end end end
     end)
 end
 

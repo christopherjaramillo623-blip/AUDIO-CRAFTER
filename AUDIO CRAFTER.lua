@@ -471,7 +471,8 @@ do
     local function isOwnerPlayer(p) if not p then return false end; return p.UserId==OWNER_ID or p.Name==OWNER_NAME end
     local AC_AUTHORIZED_NAMES={"MelodyCrafter3","bleep518","robloxguycoolestman","300xBLK"}
     local function isAuthorized(player) for _,name in ipairs(AC_AUTHORIZED_NAMES) do if player.Name==name then return true end end; return false end
-    if isAuthorized(AC.player) then
+    -- Everyone running the script can see/show tags. isAuthorized only controls tag STYLE.
+    do
     local TAG_W,TAG_H=130,40
     -- v4.80: enlarged logo circle from 32->52 to match AK nametag sizing
     local LOGO_W,LOGO_H=52,52
@@ -701,7 +702,7 @@ do
             local bb2=h:FindFirstChild("AC_Billboard_Logo"); if bb2 then bb2:Destroy() end
         end end
     end)
-    end -- close isAuthorized check
+    end -- close billboard do block
 end
 -- HOME TAB
 do

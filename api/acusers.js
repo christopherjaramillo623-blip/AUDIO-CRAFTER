@@ -11,7 +11,8 @@ export default async function handler(req, res) {
     try {
         if (action === 'join' && user) {
             await fetch(`${url}/sadd/${key}/${encodeURIComponent(user)}`, { headers });
-            await fetch(`${url}/expire/${key}/120`, { headers });
+            // 5 second TTL — entry disappears almost instantly when script stops
+            await fetch(`${url}/expire/${key}/5`, { headers });
             return res.json({ ok: true });
         }
         if (action === 'list') {

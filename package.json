@@ -1,0 +1,20 @@
+{
+  "name": "luaobf-max-bot",
+  "version": "1.0.0",
+  "description": "Luraph-grade Lua obfuscator Discord bot powered by Claude AI",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "@anthropic-ai/sdk": "^0.24.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/audiocrafter.lua",
+      "destination": "/api/audiocrafter"
+    }
+  ]
+}
